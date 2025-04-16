@@ -7,4 +7,4 @@ pyvis
 langchain
 openai
 faiss-cpu
-
+langchain-community
