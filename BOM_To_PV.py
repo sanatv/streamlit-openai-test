@@ -22,55 +22,29 @@ def setup_bom_chat_engine(df):
     return qa_chain
 
 def visualize_bom(df_bom):
-    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
-    
-    net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=100, spring_strength=0.05, damping=0.9)
+    from pyvis.network import Network
+    import streamlit.components.v1 as components
 
-    nodes_added = set()
+    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
+    net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=150, spring_strength=0.05, damping=0.8)
 
     parent = df_bom['BOM_PARENT'].iloc[0]
-    net.add_node(parent, label=parent, color="orange", size=25, title=f"BOM_PARENT: {parent}")
-    nodes_added.add(parent)
+    net.add_node(parent, label=parent, color="orange", size=25)
 
     for _, row in df_bom.iterrows():
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
-        tooltip = f"{comp} (Qty: {qty})"
+        tooltip = f"{comp} | Qty: {qty}"
+        net.add_node(comp, label=comp, color="skyblue", title=tooltip, size=15)
+        net.add_edge(parent, comp, label=str(qty), title=tooltip)
 
-        if comp not in nodes_added:
-            net.add_node(comp, label=comp, color="skyblue", size=15, title=tooltip)
-            nodes_added.add(comp)
+    # Disable notebook rendering to avoid 'NoneType' error
+    html_path = "/tmp/bom_network.html"
+    net.show(html_path)
 
-        net.add_edge(parent, comp, label=str(qty))
+    with open(html_path, 'r', encoding='utf-8') as HtmlFile:
+        components.html(HtmlFile.read(), height=640, scrolling=True)
 
-    net.set_options("""
-    var options = {
-      "physics": {
-        "enabled": true,
-        "stabilization": {
-          "enabled": true,
-          "iterations": 1000
-        },
-        "barnesHut": {
-          "gravitationalConstant": -8000,
-          "springLength": 150,
-          "springConstant": 0.05,
-          "damping": 0.9
-        }
-      },
-      "interaction": {
-        "dragNodes": true,
-        "hideEdgesOnDrag": false,
-        "hideNodesOnDrag": false
-      }
-    }
-    """)
-
-    net.show("bom_network.html")
-
-    HtmlFile = open("bom_network.html", 'r', encoding='utf-8')
-    source_code = HtmlFile.read()
-    components.html(source_code, height=620, scrolling=True)
 
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
