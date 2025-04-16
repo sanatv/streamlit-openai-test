@@ -22,9 +22,6 @@ def setup_bom_chat_engine(df):
     return qa_chain
 
 def visualize_bom(df_bom):
-    from pyvis.network import Network
-    import streamlit.components.v1 as components
-
     net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
     net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=150, spring_strength=0.05, damping=0.8)
 
@@ -38,13 +35,11 @@ def visualize_bom(df_bom):
         net.add_node(comp, label=comp, color="skyblue", title=tooltip, size=15)
         net.add_edge(parent, comp, label=str(qty), title=tooltip)
 
-    # Disable notebook rendering to avoid 'NoneType' error
     html_path = "/tmp/bom_network.html"
-    net.show(html_path)
+    net.write_html(html_path)
 
     with open(html_path, 'r', encoding='utf-8') as HtmlFile:
         components.html(HtmlFile.read(), height=640, scrolling=True)
-
 
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
