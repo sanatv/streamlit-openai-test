@@ -22,39 +22,52 @@ def setup_bom_chat_engine(df):
     return qa_chain
 
 def visualize_bom(df_bom):
-    net = Network(notebook=True, directed=True, height="600px", width="100%", bgcolor="#222222", font_color="white")
+    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
+    
+    net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=100, spring_strength=0.05, damping=0.9)
 
-    # Create nodes and edges
     nodes_added = set()
-    parent = df_bom['BOM_PARENT'].iloc[0]
 
-    # Add root node
-    net.add_node(parent, color="orange", size=25, title=parent)
+    parent = df_bom['BOM_PARENT'].iloc[0]
+    net.add_node(parent, label=parent, color="orange", size=25, title=f"BOM_PARENT: {parent}")
     nodes_added.add(parent)
 
     for _, row in df_bom.iterrows():
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
-        tooltip = f"Qty: {qty}"
+        tooltip = f"{comp} (Qty: {qty})"
 
         if comp not in nodes_added:
-            net.add_node(comp, color="skyblue", size=15, title=tooltip, hidden=True)
+            net.add_node(comp, label=comp, color="skyblue", size=15, title=tooltip)
             nodes_added.add(comp)
 
-        net.add_edge(parent, comp, label=f"{qty}", title=tooltip, hidden=True)
+        net.add_edge(parent, comp, label=str(qty))
 
-    # Add JavaScript for toggling node visibility on click (collapsible nodes)
-    neighbor_map = net.get_adj_list()
+    net.set_options("""
+    var options = {
+      "physics": {
+        "enabled": true,
+        "stabilization": {
+          "enabled": true,
+          "iterations": 1000
+        },
+        "barnesHut": {
+          "gravitationalConstant": -8000,
+          "springLength": 150,
+          "springConstant": 0.05,
+          "damping": 0.9
+        }
+      },
+      "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+      }
+    }
+    """)
 
-    for node in net.nodes:
-        node["title"] += f" (click to expand/collapse)"
-        node["value"] = len(neighbor_map[node["id"]])
-
-    net.toggle_physics(True)
-    net.show_buttons(filter_=['physics'])
     net.show("bom_network.html")
 
-    # Render in Streamlit
     HtmlFile = open("bom_network.html", 'r', encoding='utf-8')
     source_code = HtmlFile.read()
     components.html(source_code, height=620, scrolling=True)
