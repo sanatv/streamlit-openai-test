@@ -1,51 +1,39 @@
 import streamlit as st
 import pandas as pd
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
-
+from langchain_community.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from langchain.docstore.document import Document
 import os
 
-from langchain.chains import RetrievalQA
-from langchain.vectorstores import FAISS
-from langchain.docstore.document import Document
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-
 def setup_bom_chat_engine(df):
-    # Turn DataFrame into text format
     bom_text = df.to_csv(index=False)
     docs = [Document(page_content=bom_text)]
-
-    # Embed using OpenAI
     embeddings = OpenAIEmbeddings()
     vectordb = FAISS.from_documents(docs, embeddings)
-
-    # Build RetrievalQA
     qa_chain = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(temperature=0),
+        llm=ChatOpenAI(model="gpt-4o", temperature=0),
         retriever=vectordb.as_retriever()
     )
     return qa_chain
 
-
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
-# ----------- Simulated Tables -----------
+
 MAST = ["000000BOARD1001"]
 AEOI = ["CHG001"]
 MARA = ["000000BOARD1001", "000000CHIPA1", "000000RESB2", "000000CAPC3"]
 MARC = [("000000BOARD1001", "8020"), ("000000CHIPA1", "8020"), ("000000RESB2", "8020"), ("000000CAPC3", "8020")]
 
-# ----------- LangGraph Workflow -----------
 def validate_and_transform(state):
     df = state["raw_input"].copy()
     errors = []
-
     df["BOM_PARENT"] = df["BOM_PARENT"].astype(str).str.zfill(14)
     df["BOM_COMPONENT"] = df["BOM_COMPONENT"].astype(str).str.zfill(12)
     df["QTY"] = df["QTY"].round(3)
-
     for i, row in df.iterrows():
         if row["BOM_PARENT"] not in MARA:
             errors.append(f"Row {i}: BOM_PARENT {row['BOM_PARENT']} not found in MARA")
@@ -55,7 +43,6 @@ def validate_and_transform(state):
             errors.append(f"Row {i}: MRP view for BOM_PARENT not found in MARC")
         if (row["BOM_COMPONENT"], "8020") not in MARC:
             errors.append(f"Row {i}: MRP view for BOM_COMPONENT not found in MARC")
-
     return {**state, "validated_input": df, "error_log": errors}
 
 def determine_action(state):
@@ -121,40 +108,18 @@ builder.add_edge("create_production_version", END)
 
 graph = builder.compile()
 
-# ----------- BOM Visualizer -----------
-def visualize_bom(df_bom):
-    net = Network(notebook=True, directed=True, height="600px", width="100%", bgcolor="#222222", font_color="white")
-    parent = df_bom['BOM_PARENT'].iloc[0]
-    net.add_node(parent, color="orange", size=20, title="BOM_PARENT")
-    for _, row in df_bom.iterrows():
-        comp = row['BOM_COMPONENT']
-        qty = row['QTY']
-        tooltip = f"Qty: {qty}"
-        net.add_node(comp, color="skyblue", title=tooltip)
-        net.add_edge(parent, comp, label=f"{qty}", title=tooltip)
-    net.show("bom_network.html")
-    HtmlFile = open("bom_network.html", 'r', encoding='utf-8')
-    source_code = HtmlFile.read()
-    components.html(source_code, height=620, scrolling=True)
-
-# ----------- Streamlit UI -----------
 st.title("🚀 BOM to Production Version")
-
 uploaded_file = st.file_uploader("📤 Upload your extended BOM CSV", type=["csv"])
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    initial_state = {
-        "raw_input": df, "validated_input": pd.DataFrame(),
-        "error_log": [], "bom_action": "", "eco_number": "",
-        "bom_header": {}, "bom_items": pd.DataFrame(), "production_version": {}
-    }
+    initial_state = {"raw_input": df}
     result = graph.invoke(initial_state)
 
     if result["error_log"]:
         st.subheader("❌ Errors")
         st.write(result["error_log"])
         if st.button("🤖 Explain Errors with AI"):
-            llm = ChatOpenAI()
+            llm = ChatOpenAI(model="gpt-4o")
             explanation = llm.invoke(f"Explain these errors: {result['error_log']}")
             st.info(explanation.content)
     else:
@@ -170,10 +135,9 @@ if uploaded_file:
     st.subheader("📊 BOM Visualization")
     visualize_bom(result["bom_items"])
 
-st.subheader("💬 Chat with your BOM")
-
-user_query = st.text_input("Ask a question about this BOM:")
-if user_query:
-    qa = setup_bom_chat_engine(result["bom_items"])
-    answer = qa.run(user_query)
-    st.info(answer)
+    st.subheader("💬 Chat with your BOM")
+    user_query = st.text_input("Ask a question about this BOM:")
+    if user_query:
+        qa = setup_bom_chat_engine(result["bom_items"])
+        answer = qa.run(user_query)
+        st.info(answer)
