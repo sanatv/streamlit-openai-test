@@ -21,6 +21,21 @@ def setup_bom_chat_engine(df):
     )
     return qa_chain
 
+def visualize_bom(df_bom):
+    net = Network(notebook=True, directed=True, height="600px", width="100%", bgcolor="#222222", font_color="white")
+    parent = df_bom['BOM_PARENT'].iloc[0]
+    net.add_node(parent, color="orange", size=20, title="BOM_PARENT")
+    for _, row in df_bom.iterrows():
+        comp = row['BOM_COMPONENT']
+        qty = row['QTY']
+        tooltip = f"Qty: {qty}"
+        net.add_node(comp, color="skyblue", title=tooltip)
+        net.add_edge(parent, comp, label=f"{qty}", title=tooltip)
+    net.show("bom_network.html")
+    HtmlFile = open("bom_network.html", 'r', encoding='utf-8')
+    source_code = HtmlFile.read()
+    components.html(source_code, height=620, scrolling=True)
+
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 MAST = ["000000BOARD1001"]
