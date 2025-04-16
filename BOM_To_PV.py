@@ -24,37 +24,38 @@ import plotly.graph_objects as go
 
 def visualize_bom(df_bom, filter_qty=0, filter_usage_probability=0):
     filtered_df = df_bom[
-        (df_bom['QTY'] >= filter_qty) & 
+        (df_bom['QTY'] >= filter_qty) &
         (df_bom['USAGE_PROBABILITY'] >= filter_usage_probability)
     ]
 
-    labels = list(set(filtered_df['BOM_PARENT']).union(set(filtered_df['BOM_COMPONENT'])))
-    parents = [''] * len(labels)
-    values = [1] * len(labels)
-
-    label_to_index = {label: idx for idx, label in enumerate(labels)}
+    labels = []
+    parents = []
 
     for _, row in filtered_df.iterrows():
-        parent_idx = label_to_index[row['BOM_PARENT']]
-        comp_idx = label_to_index[row['BOM_COMPONENT']]
-        parents[comp_idx] = labels[parent_idx]
+        parent = row['BOM_PARENT']
+        child = row['BOM_COMPONENT']
+
+        if parent not in labels:
+            labels.append(parent)
+            parents.append("")
+
+        labels.append(child)
+        parents.append(parent)
 
     fig = go.Figure(go.Sunburst(
         labels=labels,
         parents=parents,
-        values=values,
         branchvalues="total",
-        hoverinfo="label+percent entry",
-        maxdepth=-1
+        hoverinfo="label+text",
     ))
 
     fig.update_layout(
-        margin=dict(t=10, l=10, r=10, b=10),
-        paper_bgcolor="#222222",
-        font_color="white"
+        margin=dict(t=0, l=0, r=0, b=0),
+        height=650
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
