@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
 from langchain_community.vectorstores import FAISS
@@ -21,51 +20,27 @@ def setup_bom_chat_engine(df):
     )
     return qa_chain
 
-def visualize_bom(df_bom):
+def visualize_bom(df_bom, filter_qty=0):
     net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
-    net.set_options("""
-    var options = {
-      "layout": {
-        "hierarchical": {
-          "enabled": true,
-          "levelSeparation": 100,
-          "nodeSpacing": 150,
-          "treeSpacing": 200,
-          "direction": "UD",
-          "sortMethod": "directed"
-        }
-      },
-      "interaction": {
-        "dragNodes":true,
-        "hideEdgesOnDrag":false,
-        "hideNodesOnDrag":false
-      },
-      "physics": {
-        "enabled": false
-      }
-    }
-    """)
+    net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=150, spring_strength=0.05, damping=0.8)
 
-    parent_nodes = set(df_bom['BOM_PARENT'])
     for _, row in df_bom.iterrows():
+        if row['QTY'] < filter_qty:
+            continue
         parent = row['BOM_PARENT']
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
-
-        if not net.get_node(parent):
+        if parent not in net.node_ids:
             net.add_node(parent, label=parent, color="orange", size=25)
-        if not net.get_node(comp):
+        if comp not in net.node_ids:
             net.add_node(comp, label=comp, color="skyblue", size=15, title=f"Qty: {qty}")
-
-        net.add_edge(parent, comp, label=str(qty))
+        net.add_edge(parent, comp, label=str(qty), title=f"Qty: {qty}")
 
     html_path = "/tmp/bom_network.html"
     net.write_html(html_path)
 
     with open(html_path, 'r', encoding='utf-8') as HtmlFile:
         components.html(HtmlFile.read(), height=640, scrolling=True)
-
-
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
@@ -175,11 +150,10 @@ if uploaded_file:
     st.json(result["bom_header"])
     st.subheader("🧾 BOM Items")
     st.dataframe(result["bom_items"])
-    st.subheader("🔖 Production Version")
-    st.json(result["production_version"])
 
+    filter_qty = st.slider("Filter BOM Components by Quantity", min_value=0, max_value=100, value=0)
     st.subheader("📊 BOM Visualization")
-    visualize_bom(result["bom_items"])
+    visualize_bom(result["bom_items"], filter_qty)
 
     st.subheader("💬 Chat with your BOM")
     user_query = st.text_input("Ask a question about this BOM:")
