@@ -225,12 +225,12 @@ if uploaded_file:
     st.subheader("📊 BOM Visualization")
 
     vis_type = st.selectbox("Select Visualization Type", ["Graph (PyVis)", "Tree (Plotly)"])
-if vis_type == "Graph (PyVis)":
-    visualize_bom(...)
-else:
-    visualize_bom_plotly(...)
-import plotly.graph_objects as go
-    visualize_bom(result["bom_items"], filter_qty, filter_usage_probability)
+    if vis_type == "Graph (PyVis)":
+        visualize_bom(...)
+    else:
+        visualize_bom_plotly(...)
+    
+        visualize_bom(result["bom_items"], filter_qty, filter_usage_probability)
 
     st.subheader("💬 Chat with your BOM")
     user_query = st.text_input("Ask a question about this BOM:")
