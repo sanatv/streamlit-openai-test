@@ -131,3 +131,44 @@ builder.add_edge("create_bom_items", "create_production_version")
 builder.add_edge("create_production_version", END)
 
 graph = builder.compile()
+
+st.title("🚀 BOM to Production Version")
+
+uploaded_file = st.file_uploader("📤 Upload your extended BOM CSV", type=["csv"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    initial_state = {"raw_input": df}
+    result = graph.invoke(initial_state)
+
+    if result["error_log"]:
+        st.subheader("❌ Errors")
+        st.write(result["error_log"])
+        if st.button("🤖 Explain Errors with AI"):
+            llm = ChatOpenAI(model="gpt-4o")
+            explanation = llm.invoke(f"Explain these errors: {result['error_log']}")
+            st.info(explanation.content)
+    else:
+        st.success("✅ No validation errors!")
+
+    st.subheader("📦 BOM Header")
+    st.json(result["bom_header"])
+
+    st.subheader("🧾 BOM Items")
+    st.dataframe(result["bom_items"])
+
+    st.subheader("🔖 Production Version")
+    st.json(result["production_version"])
+
+    filter_qty = st.slider("Filter by Quantity", 0, 100, 0)
+    filter_usage_probability = st.slider("Filter by Usage Probability (%)", 0, 100, 0)
+
+    st.subheader("📊 BOM Visualization")
+    visualize_bom(result["bom_items"], filter_qty, filter_usage_probability)
+
+    st.subheader("💬 Chat with your BOM")
+    user_query = st.text_input("Ask a question about this BOM:")
+    if user_query:
+        qa = setup_bom_chat_engine(result["bom_items"])
+        answer = qa.run(user_query)
+        st.info(answer)
+
