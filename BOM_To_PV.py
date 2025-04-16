@@ -115,21 +115,19 @@ def create_production_version(state):
     return {**state, "production_version": prod_version}
 
 builder = StateGraph(dict)
-# (Graph nodes and edges remain unchanged)
+builder.add_node("validate_and_transform", validate_and_transform)
+builder.add_node("determine_action", determine_action)
+builder.add_node("generate_eco_number", generate_eco_number)
+builder.add_node("generate_bom_header", generate_bom_header)
+builder.add_node("create_bom_items", create_bom_items)
+builder.add_node("create_production_version", create_production_version)
 
-st.title("🚀 BOM to Production Version")
-uploaded_file = st.file_uploader("📤 Upload your extended BOM CSV", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    initial_state = {"raw_input": df}
-    result = graph.invoke(initial_state)
+builder.set_entry_point("validate_and_transform")
+builder.add_edge("validate_and_transform", "determine_action")
+builder.add_edge("determine_action", "generate_eco_number")
+builder.add_edge("generate_eco_number", "generate_bom_header")
+builder.add_edge("generate_bom_header", "create_bom_items")
+builder.add_edge("create_bom_items", "create_production_version")
+builder.add_edge("create_production_version", END)
 
-    if result["error_log"]:
-        st.subheader("❌ Errors")
-        st.write(result["error_log"])
-    else:
-        st.success("✅ No validation errors!")
-
-    filter_qty = st.slider("Filter by Quantity", 0, 100, 0)
-    filter_usage_probability = st.slider("Filter by Usage Probability (%)", 0, 100, 0)
-    visualize_bom(result["bom_items"], filter_qty, filter_usage_probability)
+graph = builder.compile()
