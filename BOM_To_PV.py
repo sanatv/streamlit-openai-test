@@ -21,6 +21,48 @@ def setup_bom_chat_engine(df):
     return qa_chain
 
 import plotly.graph_objects as go
+vis_type = st.selectbox("Select Visualization Type", ["Graph (PyVis)", "Tree (Plotly)"])
+if vis_type == "Graph (PyVis)":
+    visualize_bom(...)
+else:
+    visualize_bom_plotly(...)
+import plotly.graph_objects as go
+
+def visualize_bom_plotly(df_bom, filter_qty=0, filter_usage_probability=0):
+    filtered_df = df_bom[
+        (df_bom['QTY'] >= filter_qty) &
+        (df_bom['USAGE_PROBABILITY'] >= filter_usage_probability)
+    ]
+
+    labels = []
+    parents = []
+
+    unique_rows = filtered_df.drop_duplicates(subset=["BOM_PARENT", "BOM_COMPONENT"])
+    for _, row in unique_rows.iterrows():
+        parent = row["BOM_PARENT"]
+        child = row["BOM_COMPONENT"]
+
+        if parent not in labels:
+            labels.append(parent)
+            parents.append("")
+
+        labels.append(child)
+        parents.append(parent)
+
+    fig = go.Figure(go.Treemap(
+        labels=labels,
+        parents=parents,
+        hoverinfo="label+text",
+        branchvalues="total",
+        maxdepth=4  # default expansion depth
+    ))
+
+    fig.update_layout(
+        margin=dict(t=10, l=10, r=10, b=10),
+        height=700
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def visualize_bom(df_bom, filter_qty=0, filter_usage_probability=0):
     net = Network(height="800px", width="100%", bgcolor="#222222", font_color="white", directed=True)
