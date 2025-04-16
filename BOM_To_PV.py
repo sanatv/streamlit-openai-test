@@ -21,12 +21,7 @@ def setup_bom_chat_engine(df):
     return qa_chain
 
 import plotly.graph_objects as go
-vis_type = st.selectbox("Select Visualization Type", ["Graph (PyVis)", "Tree (Plotly)"])
-if vis_type == "Graph (PyVis)":
-    visualize_bom(...)
-else:
-    visualize_bom_plotly(...)
-import plotly.graph_objects as go
+
 
 def visualize_bom_plotly(df_bom, filter_qty=0, filter_usage_probability=0):
     filtered_df = df_bom[
@@ -228,6 +223,13 @@ if uploaded_file:
     filter_usage_probability = st.slider("Filter by Usage Probability (%)", 0, 100, 0)
 
     st.subheader("📊 BOM Visualization")
+
+    vis_type = st.selectbox("Select Visualization Type", ["Graph (PyVis)", "Tree (Plotly)"])
+if vis_type == "Graph (PyVis)":
+    visualize_bom(...)
+else:
+    visualize_bom_plotly(...)
+import plotly.graph_objects as go
     visualize_bom(result["bom_items"], filter_qty, filter_usage_probability)
 
     st.subheader("💬 Chat with your BOM")
