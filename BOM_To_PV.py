@@ -23,17 +23,41 @@ def setup_bom_chat_engine(df):
 
 def visualize_bom(df_bom):
     net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", directed=True)
-    net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=150, spring_strength=0.05, damping=0.8)
+    net.set_options("""
+    var options = {
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "levelSeparation": 100,
+          "nodeSpacing": 150,
+          "treeSpacing": 200,
+          "direction": "UD",
+          "sortMethod": "directed"
+        }
+      },
+      "interaction": {
+        "dragNodes":true,
+        "hideEdgesOnDrag":false,
+        "hideNodesOnDrag":false
+      },
+      "physics": {
+        "enabled": false
+      }
+    }
+    """)
 
-    parent = df_bom['BOM_PARENT'].iloc[0]
-    net.add_node(parent, label=parent, color="orange", size=25)
-
+    parent_nodes = set(df_bom['BOM_PARENT'])
     for _, row in df_bom.iterrows():
+        parent = row['BOM_PARENT']
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
-        tooltip = f"{comp} | Qty: {qty}"
-        net.add_node(comp, label=comp, color="skyblue", title=tooltip, size=15)
-        net.add_edge(parent, comp, label=str(qty), title=tooltip)
+
+        if not net.get_node(parent):
+            net.add_node(parent, label=parent, color="orange", size=25)
+        if not net.get_node(comp):
+            net.add_node(comp, label=comp, color="skyblue", size=15, title=f"Qty: {qty}")
+
+        net.add_edge(parent, comp, label=str(qty))
 
     html_path = "/tmp/bom_network.html"
     net.write_html(html_path)
