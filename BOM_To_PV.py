@@ -23,18 +23,42 @@ def setup_bom_chat_engine(df):
 
 def visualize_bom(df_bom):
     net = Network(notebook=True, directed=True, height="600px", width="100%", bgcolor="#222222", font_color="white")
+
+    # Create nodes and edges
+    nodes_added = set()
     parent = df_bom['BOM_PARENT'].iloc[0]
-    net.add_node(parent, color="orange", size=20, title="BOM_PARENT")
+
+    # Add root node
+    net.add_node(parent, color="orange", size=25, title=parent)
+    nodes_added.add(parent)
+
     for _, row in df_bom.iterrows():
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
         tooltip = f"Qty: {qty}"
-        net.add_node(comp, color="skyblue", title=tooltip)
-        net.add_edge(parent, comp, label=f"{qty}", title=tooltip)
+
+        if comp not in nodes_added:
+            net.add_node(comp, color="skyblue", size=15, title=tooltip, hidden=True)
+            nodes_added.add(comp)
+
+        net.add_edge(parent, comp, label=f"{qty}", title=tooltip, hidden=True)
+
+    # Add JavaScript for toggling node visibility on click (collapsible nodes)
+    neighbor_map = net.get_adj_list()
+
+    for node in net.nodes:
+        node["title"] += f" (click to expand/collapse)"
+        node["value"] = len(neighbor_map[node["id"]])
+
+    net.toggle_physics(True)
+    net.show_buttons(filter_=['physics'])
     net.show("bom_network.html")
+
+    # Render in Streamlit
     HtmlFile = open("bom_network.html", 'r', encoding='utf-8')
     source_code = HtmlFile.read()
     components.html(source_code, height=620, scrolling=True)
+
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
