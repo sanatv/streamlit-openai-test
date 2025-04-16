@@ -8,6 +8,28 @@ import streamlit.components.v1 as components
 
 import os
 
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import FAISS
+from langchain.docstore.document import Document
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+def setup_bom_chat_engine(df):
+    # Turn DataFrame into text format
+    bom_text = df.to_csv(index=False)
+    docs = [Document(page_content=bom_text)]
+
+    # Embed using OpenAI
+    embeddings = OpenAIEmbeddings()
+    vectordb = FAISS.from_documents(docs, embeddings)
+
+    # Build RetrievalQA
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(temperature=0),
+        retriever=vectordb.as_retriever()
+    )
+    return qa_chain
+
+
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 # ----------- Simulated Tables -----------
 MAST = ["000000BOARD1001"]
@@ -148,3 +170,10 @@ if uploaded_file:
     st.subheader("📊 BOM Visualization")
     visualize_bom(result["bom_items"])
 
+st.subheader("💬 Chat with your BOM")
+
+user_query = st.text_input("Ask a question about this BOM:")
+if user_query:
+    qa = setup_bom_chat_engine(result["bom_items"])
+    answer = qa.run(user_query)
+    st.info(answer)

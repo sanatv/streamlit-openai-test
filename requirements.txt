@@ -4,3 +4,7 @@ langchain-openai
 pandas
 networkx
 pyvis
+langchain
+openai
+faiss-cpu
+
