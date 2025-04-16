@@ -52,11 +52,10 @@ def visualize_bom(df_bom):
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
 
-        if parent not in net.node_ids:
+        if not net.get_node(parent):
             net.add_node(parent, label=parent, color="orange", size=25)
-        if comp not in net.node_ids:
+        if not net.get_node(comp):
             net.add_node(comp, label=comp, color="skyblue", size=15, title=f"Qty: {qty}")
-
 
         net.add_edge(parent, comp, label=str(qty))
 
@@ -65,6 +64,7 @@ def visualize_bom(df_bom):
 
     with open(html_path, 'r', encoding='utf-8') as HtmlFile:
         components.html(HtmlFile.read(), height=640, scrolling=True)
+
 
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
