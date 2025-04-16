@@ -23,40 +23,50 @@ def setup_bom_chat_engine(df):
 import plotly.graph_objects as go
 
 def visualize_bom(df_bom, filter_qty=0, filter_usage_probability=0):
-    filtered_df = df_bom[
-        (df_bom['QTY'] >= filter_qty) &
-        (df_bom['USAGE_PROBABILITY'] >= filter_usage_probability)
-    ]
+    net = Network(height="800px", width="100%", bgcolor="#222222", font_color="white", directed=True)
+    net.set_options("""
+    var options = {
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "UD",
+          "sortMethod": "directed"
+        }
+      },
+      "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+      },
+      "physics": {
+        "enabled": false
+      }
+    }
+    """)
 
-    labels = []
-    parents = []
+    filtered_df = df_bom[(df_bom['QTY'] >= filter_qty) & (df_bom['USAGE_PROBABILITY'] >= filter_usage_probability)]
 
+    nodes_added = set()
     for _, row in filtered_df.iterrows():
         parent = row['BOM_PARENT']
-        child = row['BOM_COMPONENT']
+        comp = row['BOM_COMPONENT']
+        qty = row['QTY']
+        usage_prob = row['USAGE_PROBABILITY']
 
-        if parent not in labels:
-            labels.append(parent)
-            parents.append("")
+        if parent not in nodes_added:
+            net.add_node(parent, label=parent, color="orange", size=25)
+            nodes_added.add(parent)
+        if comp not in nodes_added:
+            net.add_node(comp, label=comp, color="skyblue", size=15, title=f"Qty: {qty}, Usage Probability: {usage_prob}%")
+            nodes_added.add(comp)
 
-        labels.append(child)
-        parents.append(parent)
+        net.add_edge(parent, comp, label=f"{qty}", title=f"Qty: {qty}, Usage Probability: {usage_prob}%")
 
-    fig = go.Figure(go.Sunburst(
-        labels=labels,
-        parents=parents,
-        branchvalues="total",
-        hoverinfo="label+text",
-    ))
+    html_path = "/tmp/bom_network.html"
+    net.write_html(html_path)
 
-    fig.update_layout(
-        margin=dict(t=0, l=0, r=0, b=0),
-        height=650
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
+    with open(html_path, 'r', encoding='utf-8') as HtmlFile:
+        components.html(HtmlFile.read(), height=800, scrolling=True)
 
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
