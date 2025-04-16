@@ -52,10 +52,11 @@ def visualize_bom(df_bom):
         comp = row['BOM_COMPONENT']
         qty = row['QTY']
 
-        if not net.get_node(parent):
+        if parent not in net.node_ids:
             net.add_node(parent, label=parent, color="orange", size=25)
-        if not net.get_node(comp):
+        if comp not in net.node_ids:
             net.add_node(comp, label=comp, color="skyblue", size=15, title=f"Qty: {qty}")
+
 
         net.add_edge(parent, comp, label=str(qty))
 
