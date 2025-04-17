@@ -15,7 +15,7 @@ def setup_bom_chat_engine(df):
     embeddings = OpenAIEmbeddings()
     vectordb = FAISS.from_documents(docs, embeddings)
     qa_chain = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(model="gpt-4o", temperature=0),
+        llm=ChatOpenAI(model="gpt-4.1", temperature=0),
         retriever=vectordb.as_retriever()
     )
     return qa_chain
